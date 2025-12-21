@@ -1,0 +1,75 @@
+# Compiled class files
+target/
+*.class
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Log files
+*.log
+logs/
+
+# Maven wrapper (keep .mvn folder, exclude jar)
+!.mvn/
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDEs - Eclipse/STS
+.project
+.classpath
+.settings/
+.apt_generated
+.factorypath
+.springBeans
+.sts4-cache
+
+# IDEs - VS Code
+.vscode/
+*.code-workspace
+
+# IDEs - NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# IDE - other
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment files
+.env
+.env.local
+*.properties.local
+
+# Build artifacts
+build/
+out/
+bin/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Test output
+test-output/
+surefire-reports/
+failsafe-reports/
+
+# Dependency directories
+node_modules/
+
+# Docker
+docker-compose.override.yml
+
+# Spring Boot
+HELP.md
+docs/IMPLEMENTATION_PLAN.md
