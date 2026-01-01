@@ -73,3 +73,5 @@ docker-compose.override.yml
 # Spring Boot
 HELP.md
 docs/IMPLEMENTATION_PLAN.md
+docs/MILESTONES.md
+docs/REQUIREMENTS.md
