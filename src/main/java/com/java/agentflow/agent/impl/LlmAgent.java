@@ -4,7 +4,7 @@ import com.java.agentflow.agent.Agent;
 import com.java.agentflow.agent.AgentCapabilities;
 import com.java.agentflow.agent.AgentContext;
 import com.java.agentflow.agent.AgentResult;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -54,6 +54,8 @@ public class LlmAgent implements Agent {
             Double temperature = context.getConfig("temperature", 1.0);
             Double topP = context.getConfig("topP", 1.0);
             Integer maxTokens = context.getConfig("maxTokens", 1000);
+            Integer maxRetries = context.getConfig("maxRetries", 2);
+            String reasoningEffort = context.getConfig("reasoningEffort", "medium");
 
             String apiKey;
             String baseUrl;
@@ -90,19 +92,21 @@ public class LlmAgent implements Agent {
                     .temperature(temperature)
                     .topP(topP)
                     .maxTokens(maxTokens)
+                    .maxRetries(maxRetries)
                     .timeout(Duration.ofSeconds(60));
 
             if (baseUrl != null) {
                 builder.baseUrl(baseUrl);
             }
 
-            ChatLanguageModel chatModel = builder.build();
-            String response = chatModel.generate(prompt);
+            ChatModel chatModel = builder.build();
+            String response = chatModel.chat(prompt);
 
             Map<String, Object> outputs = new HashMap<>();
             outputs.put("response", response);
             outputs.put("model", model);
             outputs.put("provider", provider);
+            outputs.put("reasoningEffort", reasoningEffort);
 
             return AgentResult.success(outputs, Duration.between(start, Instant.now()));
 
