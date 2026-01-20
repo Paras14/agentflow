@@ -72,7 +72,10 @@ public class WorkflowExecutor {
                     return executionRepository.save(execution);
                 }
 
-                stepOutputs.put(stepDef.id(), stepExecution.getOutputs());
+                // Wrap outputs in 'outputs' key so ${steps['stepId'].outputs.xxx} works
+                Map<String, Object> stepData = new HashMap<>();
+                stepData.put("outputs", stepExecution.getOutputs());
+                stepOutputs.put(stepDef.id(), stepData);
             }
 
             Map<String, Object> workflowOutputs = new HashMap<>();

@@ -1,0 +1,12 @@
+name: test-openrouter-llm
+version: "1.0"
+description: Test OpenRouter LLM (explicit config required)
+steps:
+  - id: llm-test
+    agent: llm
+    config:
+      provider: openrouter
+      model: openai/gpt-oss-120b:free
+      prompt: "Write a haiku about coding"
+      temperature: 1
+      maxTokens: 100

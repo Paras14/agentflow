@@ -1,0 +1,15 @@
+name: test-search-groq
+version: "1.0"
+description: Test DuckDuckGo search + Groq LLM (uses defaults)
+steps:
+  - id: search
+    agent: search
+    config:
+      query: "latest AI developments 2026"
+      maxResults: 3
+      
+  - id: summarize
+    agent: llm
+    dependsOn: [search]
+    config:
+      prompt: "Summarize these search results in 3 bullet points: ${steps['search'].outputs.results}"

@@ -1,0 +1,19 @@
+name: test-search-openrouter
+version: "1.0"
+description: Test DuckDuckGo search + OpenRouter LLM (explicit config)
+steps:
+  - id: search
+    agent: search
+    config:
+      query: "latest AI developments 2026"
+      maxResults: 3
+      
+  - id: summarize
+    agent: llm
+    dependsOn: [search]
+    config:
+      provider: openrouter
+      model: openai/gpt-oss-120b:free
+      prompt: "Summarize these search results in 3 bullet points: ${steps['search'].outputs.results}"
+      temperature: 1
+      maxTokens: 500

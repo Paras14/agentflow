@@ -1,0 +1,8 @@
+name: test-groq-llm
+version: "1.0"
+description: Test Groq LLM (uses defaults)
+steps:
+  - id: llm-test
+    agent: llm
+    config:
+      prompt: "Say hello in exactly 5 words"
