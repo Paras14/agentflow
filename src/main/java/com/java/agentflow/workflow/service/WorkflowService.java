@@ -1,5 +1,6 @@
 package com.java.agentflow.workflow.service;
 
+import com.java.agentflow.async.WorkflowProducer;
 import com.java.agentflow.workflow.entity.Workflow;
 import com.java.agentflow.workflow.entity.WorkflowExecution;
 import com.java.agentflow.workflow.engine.WorkflowExecutor;
@@ -16,10 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Service layer for workflow operations.
- * Orchestrates between repositories, parser, and executor.
- */
 @Service
 public class WorkflowService {
 
@@ -27,33 +24,30 @@ public class WorkflowService {
     private final WorkflowExecutionRepository executionRepository;
     private final WorkflowParser workflowParser;
     private final WorkflowExecutor workflowExecutor;
+    private final WorkflowProducer workflowProducer;
 
     public WorkflowService(
             WorkflowRepository workflowRepository,
             WorkflowExecutionRepository executionRepository,
             WorkflowParser workflowParser,
-            WorkflowExecutor workflowExecutor) {
+            WorkflowExecutor workflowExecutor,
+            WorkflowProducer workflowProducer) {
         this.workflowRepository = workflowRepository;
         this.executionRepository = executionRepository;
         this.workflowParser = workflowParser;
         this.workflowExecutor = workflowExecutor;
+        this.workflowProducer = workflowProducer;
     }
 
-    /**
-     * Create a new workflow from YAML definition.
-     */
     @Transactional
     public Workflow createFromYaml(String yaml, String createdBy) {
-        // Parse and validate
         WorkflowDefinition definition = workflowParser.parseYaml(yaml);
 
-        // Check for duplicate
         if (workflowRepository.existsByNameAndVersion(definition.name(), definition.version())) {
             throw new WorkflowAlreadyExistsException(
                     "Workflow already exists: " + definition.name() + " v" + definition.version());
         }
 
-        // Create entity
         Workflow workflow = new Workflow();
         workflow.setName(definition.name());
         workflow.setVersion(definition.version());
@@ -64,55 +58,45 @@ public class WorkflowService {
         return workflowRepository.save(workflow);
     }
 
-    /**
-     * Get a workflow by ID.
-     */
     public Optional<Workflow> findById(UUID id) {
         return workflowRepository.findById(id);
     }
 
-    /**
-     * Get all workflows with pagination.
-     */
     public Page<Workflow> findAll(Pageable pageable) {
         return workflowRepository.findAll(pageable);
     }
 
-    /**
-     * Execute a workflow synchronously.
-     */
     @Transactional
     public WorkflowExecution execute(UUID workflowId, Map<String, Object> inputs) {
+        return execute(workflowId, inputs, false);
+    }
+
+    @Transactional
+    public WorkflowExecution execute(UUID workflowId, Map<String, Object> inputs, boolean async) {
         Workflow workflow = workflowRepository.findById(workflowId)
                 .orElseThrow(() -> new WorkflowNotFoundException("Workflow not found: " + workflowId));
 
-        // Create execution record
         WorkflowExecution execution = new WorkflowExecution();
         execution.setWorkflow(workflow);
         execution.setInputs(inputs);
         execution = executionRepository.save(execution);
 
-        // Execute workflow
+        if (async) {
+            workflowProducer.queueExecution(workflowId, execution.getId(), inputs);
+            return execution;
+        }
+
         return workflowExecutor.execute(workflow, execution, inputs);
     }
 
-    /**
-     * Get execution by ID.
-     */
     public Optional<WorkflowExecution> findExecutionById(UUID id) {
         return executionRepository.findById(id);
     }
 
-    /**
-     * Get executions for a workflow.
-     */
     public Page<WorkflowExecution> findExecutionsByWorkflow(UUID workflowId, Pageable pageable) {
         return executionRepository.findByWorkflowIdOrderByCreatedAtDesc(workflowId, pageable);
     }
 
-    /**
-     * Delete a workflow and all its executions.
-     */
     @Transactional
     public void delete(UUID id) {
         if (!workflowRepository.existsById(id)) {

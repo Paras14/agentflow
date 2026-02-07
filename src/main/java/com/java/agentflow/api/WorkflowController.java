@@ -69,12 +69,13 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/execute")
-    @Operation(summary = "Execute a workflow")
+    @Operation(summary = "Execute a workflow (sync or async)")
     public ResponseEntity<ExecutionResponse> executeWorkflow(
             @PathVariable UUID id,
+            @RequestParam(defaultValue = "false") boolean async,
             @Valid @RequestBody(required = false) ExecuteWorkflowRequest request) {
         var inputs = request != null ? request.inputs() : java.util.Map.<String, Object>of();
-        WorkflowExecution execution = workflowService.execute(id, inputs);
+        WorkflowExecution execution = workflowService.execute(id, inputs, async);
         return ResponseEntity.ok(ExecutionResponse.from(execution));
     }
 

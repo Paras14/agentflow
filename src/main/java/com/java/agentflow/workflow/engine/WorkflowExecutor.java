@@ -98,12 +98,28 @@ public class WorkflowExecutor {
             Map<String, Object> workflowInputs,
             Map<String, Map<String, Object>> stepOutputs,
             WorkflowExecution workflowExecution) {
-        log.debug("Executing step: {} (agent: {})", stepDef.id(), stepDef.agent());
+        return executeStepWithRetry(stepDef, workflowInputs, stepOutputs, workflowExecution, null);
+    }
 
-        StepExecution stepExecution = new StepExecution();
-        stepExecution.setStepId(stepDef.id());
-        stepExecution.setAgentType(stepDef.agent());
-        workflowExecution.addStepExecution(stepExecution);
+    private StepExecution executeStepWithRetry(
+            StepDefinition stepDef,
+            Map<String, Object> workflowInputs,
+            Map<String, Map<String, Object>> stepOutputs,
+            WorkflowExecution workflowExecution,
+            StepExecution existingExecution) {
+
+        // Reuse existing execution for retries, or create new one for first attempt
+        StepExecution stepExecution;
+        if (existingExecution != null) {
+            stepExecution = existingExecution;
+            log.info("Retrying step: {} (attempt {})", stepDef.id(), stepExecution.getRetryCount() + 1);
+        } else {
+            stepExecution = new StepExecution();
+            stepExecution.setStepId(stepDef.id());
+            stepExecution.setAgentType(stepDef.agent());
+            workflowExecution.addStepExecution(stepExecution);
+            log.debug("Executing step: {} (agent: {})", stepDef.id(), stepDef.agent());
+        }
 
         try {
             Agent agent = agentRegistry.getAgentOrThrow(stepDef.agent());
@@ -125,7 +141,17 @@ public class WorkflowExecutor {
                 log.debug("Step completed: {} in {}ms", stepDef.id(), result.executionTime().toMillis());
             } else {
                 if (shouldRetry(stepDef, stepExecution)) {
-                    return retryStep(stepDef, workflowInputs, stepOutputs, workflowExecution, stepExecution);
+                    // Increment retry count and sleep before retry
+                    stepExecution.incrementRetry();
+                    if (stepDef.retry() != null && stepDef.retry().delayMs() > 0) {
+                        try {
+                            Thread.sleep(stepDef.retry().delayMs());
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                    // Recursive retry with SAME StepExecution object
+                    return executeStepWithRetry(stepDef, workflowInputs, stepOutputs, workflowExecution, stepExecution);
                 }
                 stepExecution.markFailed(result.error());
                 log.warn("Step failed: {} - {}", stepDef.id(), result.error());
@@ -144,25 +170,5 @@ public class WorkflowExecutor {
             return false;
         }
         return stepExecution.getRetryCount() < stepDef.retry().maxRetries();
-    }
-
-    private StepExecution retryStep(
-            StepDefinition stepDef,
-            Map<String, Object> workflowInputs,
-            Map<String, Map<String, Object>> stepOutputs,
-            WorkflowExecution workflowExecution,
-            StepExecution previousAttempt) {
-        log.info("Retrying step: {} (attempt {})", stepDef.id(), previousAttempt.getRetryCount() + 1);
-
-        if (stepDef.retry() != null && stepDef.retry().delayMs() > 0) {
-            try {
-                Thread.sleep(stepDef.retry().delayMs());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        previousAttempt.incrementRetry();
-        return executeStep(stepDef, workflowInputs, stepOutputs, workflowExecution);
     }
 }

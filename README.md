@@ -7,26 +7,24 @@ Building reliable AI applications often means chaining together multiple unpredi
 
 ## Key Features
 - **YAML-based Workflows**: Define complex agent interactions in readable, version-controllable YAML files.
-- **Built-in Agents**: Ready-to-use integrations for HTTP requests, Database (SQL) access, and LLM providers.
-- **Resilient Execution**: Automatic retries, error handling, and persistent state management using PostgreSQL.
-- **Scalable**: Built on Spring Boot 3 and designed to scale horizontally.
+- **Built-in Agents**: Ready-to-use integrations for HTTP requests, Web Search (DuckDuckGo), and LLM providers (Groq, OpenRouter, OpenAI).
+- **Sync & Async Execution**: Run workflows synchronously or queue them for async processing via Kafka.
+- **Resilient Execution**: Automatic retries, error handling, and persistent state management using PostgreSQL and Redis.
+- **Scalable**: Built on Spring Boot 3 and designed to scale horizontally with Kafka-based message processing.
 
 ## Getting Started
 
 ### Prerequisites
 - Java 21 or higher
 - Maven
-- Docker (for needed services)
+- Docker (for supporting services)
 
 ### Quick Start
 1. Clone the repository.
-2. Start the supporting services (Postgres):
+2. Copy `.env.example` to `.env` and add your API keys (see `SETUP.md`).
+3. Start the supporting services:
    ```bash
    docker-compose up -d
-   ```
-3. Build the application:
-   ```bash
-   ./mvnw clean install
    ```
 4. Run the application:
    ```bash
@@ -37,23 +35,33 @@ Building reliable AI applications often means chaining together multiple unpredi
 Here is what a simple workflow looks like in AgentFlow:
 
 ```yaml
-name: "research-article"
+name: research-article
 version: "1.0"
 steps:
-  - id: "search_topic"
-    type: "search"
-    inputs:
-      query: "${workflow.input.topic}"
+  - id: search_topic
+    agent: search
+    config:
+      query: "latest AI developments"
+      maxResults: 3
   
-  - id: "summarize"
-    type: "llm"
-    inputs:
-      prompt: "Summarize the following search results: ${search_topic.output}"
-      model: "gpt-4"
+  - id: summarize
+    agent: llm
+    dependsOn: [search_topic]
+    config:
+      prompt: "Summarize these results: ${steps['search_topic'].outputs.results}"
+```
+
+Execute synchronously or asynchronously:
+```bash
+# Sync execution (waits for completion)
+POST /api/workflows/{id}/execute
+
+# Async execution (returns immediately, processes via Kafka)
+POST /api/workflows/{id}/execute?async=true
 ```
 
 ## Documentation
-For more detailed information on architecture and roadmap, please see the `docs/` directory.
+For more detailed information on setup, API keys, and testing, see `SETUP.md`. Architecture details are in the `docs/` directory.
 
 ## Contributing
 This project is open for contributions. Please verify your changes before submitting a pull request.
